@@ -2,6 +2,32 @@
 
 This repository contains a Go wrapper for the [bert.cpp](https://github.com/skeskinen/bert.cpp) library, or an updated fork [embeddings.cpp](https://github.com/xyzhang626/embeddings.cpp). The library is semi-deprecated, since the functionality has been integrated in [llama.cpp](https://github.com/ggerganov/llama.cpp). However, `bert.cpp` is much smaller and easier to use, so it might be useful for some use cases where one does not need the full functionality of LLM and just wants to use BERT embeddings, for example when using to generate an embedding for a query in a web server or local lookups.
 
+```go
+import (
+    "fmt"
+    "path/filepath"
+
+    "github.com/kelindar/bert"
+)
+
+func main() {
+	file, _ := filepath.Abs("../dist/minilm12-q4.bin")
+	model, err := bert.New(file)
+	if err != nil {
+		panic(err)
+	}
+	defer model.Close()
+
+    // Create an embedding vector for a sentence
+	embeddings, err := model.EmbedText("This is a test sentence.")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Embeddings:", embeddings)
+}
+```
+
 ## Precompiled binaries
 
 Precompiled binaries for Windows and Linux are available in the [dist](dist) directory. If the architecture/platform you are using is not available, you would need to compile the library yourself. I've additionally provided also a couple of models in the same directory. The model in question is [MiniLM](https://arxiv.org/abs/2002.10957) with 6 and 12 layers.
