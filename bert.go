@@ -69,24 +69,14 @@ func (m *Bert) EmbedText(text string) ([]float32, error) {
 	return exEmbedText(m.handle, text, m.threads, m.size)
 }
 
-// EmbedTextBatch encodes multiple pieces of text in a batch.
-func (m *Bert) EmbedTextBatch(texts []string, batchSize int32) ([][]float32, error) {
-	return exEmbedTextBatch(m.handle, texts, m.threads, batchSize, m.size)
-}
-
-// Tokenize converts input text into an array of token IDs based on the model's vocabulary.
-func (m *Bert) Tokenize(text string) ([]Token, error) {
-	return exTokenizeText(m.handle, text, m.MaxTokens())
-}
-
 // EmbedTokens evaluates the model on a given sequence of token IDs to produce embeddings.
 func (m *Bert) EmbedTokens(tokens []Token) ([]float32, error) {
 	return exEmbedTokens(m.handle, tokens, m.threads, m.size)
 }
 
-// EmbedTokensBatch evaluates the model on a batch of sequences of token IDs to produce embeddings.
-func (m *Bert) EmbedTokensBatch(tokenBatches [][]Token, batchSize int32) ([][]float32, error) {
-	return exEmbedTokensBatch(m.handle, tokenBatches, m.threads, batchSize, m.size)
+// Tokenize converts input text into an array of token IDs based on the model's vocabulary.
+func (m *Bert) Tokenize(text string) ([]Token, error) {
+	return exTokenizeText(m.handle, text, m.MaxTokens())
 }
 
 // TokenString converts a token ID into a string using the model's vocabulary.

@@ -121,7 +121,6 @@ import "C"
 
 import (
 	"fmt"
-	"sort"
 	"unsafe"
 )
 
@@ -178,76 +177,6 @@ func exEmbedText(handle uintptr, text string, nThreads, size int32) ([]float32, 
 	return embeddings, nil
 }
 
-// exEmbedTextBatch encodes multiple texts into embeddings in a batch.
-func exEmbedTextBatch(handle uintptr, texts []string, nThreads, batchSize, size int32) ([][]float32, error) {
-	nInputs := int32(len(texts))
-	if nInputs == 0 {
-		return nil, fmt.Errorf("no input texts provided")
-	}
-
-	// Allocate C array for texts
-	cTexts := C.malloc(C.size_t(nInputs) * C.size_t(unsafe.Sizeof(uintptr(0))))
-	if cTexts == nil {
-		return nil, fmt.Errorf("failed to allocate memory for texts")
-	}
-	defer C.free(cTexts)
-
-	cTextsArr := (*[1 << 30]*C.char)(cTexts)
-	cStrs := make([]*C.char, nInputs)
-	for i, txt := range texts {
-		cStr := C.CString(txt)
-		cStrs[i], cTextsArr[i] = cStr, cStr
-	}
-	defer func() {
-		for _, cStr := range cStrs {
-			C.free(unsafe.Pointer(cStr))
-		}
-	}()
-
-	// Allocate C array for embeddings pointers
-	cEmbs := C.malloc(C.size_t(nInputs) * C.size_t(unsafe.Sizeof(uintptr(0))))
-	if cEmbs == nil {
-		return nil, fmt.Errorf("failed to allocate memory for embeddings pointers")
-	}
-	defer C.free(cEmbs)
-
-	cEmbsArr := (*[1 << 30]*C.float)(cEmbs)
-	embList := make([][]float32, nInputs)
-	cEmbPtrs := make([]*C.float, nInputs)
-
-	for i := int32(0); i < nInputs; i++ {
-		embList[i] = make([]float32, size)
-		cEmb := C.malloc(C.size_t(size) * C.size_t(unsafe.Sizeof(C.float(0))))
-		if cEmb == nil {
-			return nil, fmt.Errorf("failed to allocate memory for embeddings[%d]", i)
-		}
-		cEmbPtrs[i], cEmbsArr[i] = (*C.float)(cEmb), (*C.float)(cEmb)
-		defer C.free(unsafe.Pointer(cEmb))
-	}
-
-	// Call the C function
-	C.bert_encode_batch(
-		C.bert_ctx(handle),
-		C.int32_t(nThreads),
-		C.int32_t(batchSize),
-		C.int32_t(nInputs),
-		(**C.char)(cTexts),
-		(**C.float)(cEmbs),
-	)
-
-	// Copy the embeddings back to Go slices
-	for i := int32(0); i < nInputs; i++ {
-		cEmb := cEmbPtrs[i]
-		goEmb := embList[i]
-		for j := int32(0); j < size; j++ {
-			offset := uintptr(j) * unsafe.Sizeof(C.float(0))
-			goEmb[j] = float32(*(*C.float)(unsafe.Pointer(uintptr(unsafe.Pointer(cEmb)) + offset)))
-		}
-	}
-
-	return embList, nil
-}
-
 // exTokenizeText tokenizes the given text into tokens.
 func exTokenizeText(handle uintptr, text string, maxTokens int) ([]Token, error) {
 	cText := C.CString(text)
@@ -290,102 +219,6 @@ func exEmbedTokens(handle uintptr, tokens []Token, nThreads, size int32) ([]floa
 	)
 
 	return embeddings, nil
-}
-
-// exEmbedTokensBatch embeds multiple token sequences into embeddings in a batch.
-func exEmbedTokensBatch(handle uintptr, tokenBatches [][]Token, nThreads, batchSize, size int32) ([][]float32, error) {
-	nInputs := int32(len(tokenBatches))
-	if nInputs == 0 {
-		return nil, fmt.Errorf("no input token sequences provided")
-	}
-
-	// Sort token batches by length in descending order
-	sort.Slice(tokenBatches, func(i, j int) bool {
-		return len(tokenBatches[i]) > len(tokenBatches[j])
-	})
-
-	// Allocate C array for batch_tokens
-	cBatchTokens := C.malloc(C.size_t(nInputs) * C.size_t(unsafe.Sizeof(uintptr(0))))
-	if cBatchTokens == nil {
-		return nil, fmt.Errorf("failed to allocate memory for batch_tokens")
-	}
-	defer C.free(cBatchTokens)
-
-	cBatchTokensArr := (*[1 << 30]*C.int32_t)(cBatchTokens)
-	nTokensArr := make([]C.int32_t, nInputs)
-
-	for i, batch := range tokenBatches {
-		nTokensArr[i] = C.int32_t(len(batch))
-		if len(batch) > 0 {
-			cTokens := C.malloc(C.size_t(len(batch)) * C.size_t(unsafe.Sizeof(C.int32_t(0))))
-			if cTokens == nil {
-				return nil, fmt.Errorf("failed to allocate memory for tokens[%d]", i)
-			}
-			cTokensArr := (*[1 << 30]C.int32_t)(cTokens)
-			for j, tok := range batch {
-				cTokensArr[j] = C.int32_t(tok)
-			}
-			cBatchTokensArr[i] = (*C.int32_t)(cTokens)
-			defer C.free(unsafe.Pointer(cTokens))
-		} else {
-			cBatchTokensArr[i] = nil
-		}
-	}
-
-	// Allocate C array for n_tokens
-	cNTokens := C.malloc(C.size_t(nInputs) * C.size_t(unsafe.Sizeof(C.int32_t(0))))
-	if cNTokens == nil {
-		return nil, fmt.Errorf("failed to allocate memory for n_tokens")
-	}
-	defer C.free(cNTokens)
-
-	cNTokensArr := (*C.int32_t)(cNTokens)
-	for i := int32(0); i < nInputs; i++ {
-		C.set_n_token_at(cNTokensArr, C.int32_t(i), nTokensArr[i])
-	}
-
-	// Allocate C array for batch_embeddings pointers
-	cBatchEmbs := C.malloc(C.size_t(nInputs) * C.size_t(unsafe.Sizeof(uintptr(0))))
-	if cBatchEmbs == nil {
-		return nil, fmt.Errorf("failed to allocate memory for batch_embeddings pointers")
-	}
-	defer C.free(cBatchEmbs)
-
-	cBatchEmbsArr := (*[1 << 30]*C.float)(cBatchEmbs)
-	embList := make([][]float32, nInputs)
-	cEmbPtrs := make([]*C.float, nInputs)
-
-	for i := int32(0); i < nInputs; i++ {
-		embList[i] = make([]float32, size)
-		cEmb := C.malloc(C.size_t(size) * C.size_t(unsafe.Sizeof(C.float(0))))
-		if cEmb == nil {
-			return nil, fmt.Errorf("failed to allocate memory for embeddings[%d]", i)
-		}
-		cEmbPtrs[i], cBatchEmbsArr[i] = (*C.float)(cEmb), (*C.float)(cEmb)
-		defer C.free(unsafe.Pointer(cEmb))
-	}
-
-	// Call the C function
-	C.bert_eval_batch(
-		C.bert_ctx(handle),
-		C.int32_t(nThreads),
-		C.int32_t(batchSize),
-		(**C.int32_t)(cBatchTokens),
-		(*C.int32_t)(cNTokens),
-		(**C.float)(cBatchEmbs),
-	)
-
-	// Copy the embeddings back to Go slices
-	for i := int32(0); i < nInputs; i++ {
-		cEmb := cEmbPtrs[i]
-		goEmb := embList[i]
-		for j := int32(0); j < size; j++ {
-			offset := uintptr(j) * unsafe.Sizeof(C.float(0))
-			goEmb[j] = float32(*(*C.float)(unsafe.Pointer(uintptr(unsafe.Pointer(cEmb)) + offset)))
-		}
-	}
-
-	return embList, nil
 }
 
 // exTokenToString converts a token ID to its corresponding string.

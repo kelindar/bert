@@ -6,7 +6,6 @@ package bert
 import (
 	_ "embed"
 	"fmt"
-	"sort"
 	"syscall"
 	"unsafe"
 
@@ -94,39 +93,6 @@ func exEmbedText(handle uintptr, text string, nThreads, size int32) ([]float32, 
 	return embeddings, nil
 }
 
-func exEmbedTextBatch(handle uintptr, texts []string, nThreads, batchSize, size int32) ([][]float32, error) {
-	nInputs := int32(len(texts))
-	textPtrs := make([]*byte, nInputs)
-	for i, text := range texts {
-		textPtr, err := syscall.BytePtrFromString(text)
-		if err != nil {
-			return nil, fmt.Errorf("failed to convert text to C string: %v", err)
-		}
-		textPtrs[i] = textPtr
-	}
-
-	embeddingsList := make([][]float32, nInputs)
-	embeddingsPtrs := make([]uintptr, nInputs)
-	for i := range embeddingsList {
-		embeddings := make([]float32, size)
-		embeddingsList[i] = embeddings
-		embeddingsPtrs[i] = uintptr(unsafe.Pointer(&embeddings[0]))
-	}
-
-	_, _, callErr := fnEmbedTextBatch.Call(
-		handle,
-		uintptr(nThreads),
-		uintptr(batchSize),
-		uintptr(nInputs),
-		uintptr(unsafe.Pointer(&textPtrs[0])),
-		uintptr(unsafe.Pointer(&embeddingsPtrs[0])),
-	)
-	if callErr != syscall.Errno(0) {
-		return nil, fmt.Errorf("bert_encode_batch failed: %v", callErr)
-	}
-	return embeddingsList, nil
-}
-
 func exTokenizeText(handle uintptr, text string, maxTokens int) ([]Token, error) {
 	textPtr, err := syscall.BytePtrFromString(text)
 	if err != nil {
@@ -164,53 +130,6 @@ func exEmbedTokens(handle uintptr, tokens []Token, nThreads, size int32) ([]floa
 		return nil, err
 	}
 	return embeddings, nil
-}
-
-func exEmbedTokensBatch(handle uintptr, tokenBatches [][]Token, nThreads, batchSize, size int32) ([][]float32, error) {
-	nInputs := int32(len(tokenBatches))
-	if nInputs == 0 {
-		return nil, fmt.Errorf("no input token sequences provided")
-	}
-
-	// Ensure the longest input is first
-	sort.Slice(tokenBatches, func(i, j int) bool {
-		return len(tokenBatches[i]) > len(tokenBatches[j])
-	})
-
-	tokenPtrs := make([]uintptr, nInputs)
-	nTokens := make([]int32, nInputs)
-
-	for i, tokens := range tokenBatches {
-		nTokens[i] = int32(len(tokens))
-		tokenPtrs[i] = uintptr(unsafe.Pointer(&tokens[0]))
-	}
-
-	embeddingsList := make([][]float32, nInputs)
-	embeddingsPtrs := make([]uintptr, nInputs)
-
-	for i := range embeddingsList {
-		embeddings := make([]float32, size)
-		embeddingsList[i] = embeddings
-		embeddingsPtrs[i] = uintptr(unsafe.Pointer(&embeddings[0]))
-	}
-
-	tokenPtrsPtr := uintptr(unsafe.Pointer(&tokenPtrs[0]))
-	nTokensPtr := uintptr(unsafe.Pointer(&nTokens[0]))
-	embeddingsPtrsPtr := uintptr(unsafe.Pointer(&embeddingsPtrs[0]))
-
-	_, _, callErr := fnEmbedTokensBatch.Call(
-		handle,
-		uintptr(nThreads),
-		uintptr(batchSize),
-		tokenPtrsPtr,
-		nTokensPtr,
-		embeddingsPtrsPtr,
-	)
-	if callErr != syscall.Errno(0) {
-		return nil, fmt.Errorf("bert_eval_batch failed: %v", callErr)
-	}
-
-	return embeddingsList, nil
 }
 
 func exTokenToString(handle uintptr, id Token) (string, error) {

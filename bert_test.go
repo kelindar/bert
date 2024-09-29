@@ -1,7 +1,6 @@
 package bert
 
 import (
-	"fmt"
 	"path/filepath"
 	"testing"
 
@@ -21,17 +20,6 @@ func BenchmarkBert(b *testing.B) {
 			assert.NoError(b, err)
 		}
 	})
-
-	b.Run("batch", func(b *testing.B) {
-		for i := 0; i < b.N; i++ {
-			_, err := ctx.EmbedTextBatch([]string{
-				text, text, text, text, text,
-				text, text, text, text, text,
-			}, 10)
-			assert.NoError(b, err)
-		}
-	})
-
 }
 
 func loadModel() *Bert {
@@ -72,34 +60,6 @@ func TestEmbedTokens(t *testing.T) {
 		assert.LessOrEqual(t, cosine(v1, v2), float32(.25),
 			text,
 		)
-	}
-}
-
-func TestEmbedBatch(t *testing.T) {
-	ctx := loadModel()
-	defer ctx.Close()
-
-	input := []string{
-		"Je préfère les pommes.",
-		"Ich esse gerne Äpfel.",
-		"私はりんごが好きです。",
-		"I like apples too.",
-	}
-
-	out, err := ctx.EmbedTextBatch(input, 8)
-	assert.NoError(t, err)
-
-	// make sure that pairwise cosine distance is low
-	for i := 0; i < len(out); i++ {
-		single, err := ctx.EmbedText(input[i])
-		assert.NoError(t, err)
-		assert.Equal(t, len(single), len(out[i]))
-
-		for j := i + 1; j < len(out); j++ {
-			assert.LessOrEqual(t, cosine(out[i], out[j]), float32(.25),
-				fmt.Sprintf(`"%s" vs "%s"`, input[i], input[j]),
-			)
-		}
 	}
 }
 
