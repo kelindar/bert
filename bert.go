@@ -69,6 +69,7 @@ func (m *Bert) EmbedText(text string) ([]float32, error) {
 	return exEmbedText(m.handle, text, m.threads, m.size)
 }
 
+/**
 // EmbedTokens evaluates the model on a given sequence of token IDs to produce embeddings.
 func (m *Bert) EmbedTokens(tokens []Token) ([]float32, error) {
 	return exEmbedTokens(m.handle, tokens, m.threads, m.size)
@@ -83,7 +84,7 @@ func (m *Bert) Tokenize(text string) ([]Token, error) {
 func (m *Bert) TokenString(id Token) (string, error) {
 	return exTokenToString(m.handle, id)
 }
-
+*/
 // --------------------------------- Library Lookup ---------------------------------
 
 // libBertPath is the path to the library.

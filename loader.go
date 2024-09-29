@@ -91,31 +91,6 @@ int32_t bert_n_max_tokens(bert_ctx ctx) {
 void bert_encode(bert_ctx ctx, int32_t n_threads, const char* text, float* embeddings) {
     bert_encode_func(ctx, n_threads, text, embeddings);
 }
-
-void bert_encode_batch(bert_ctx ctx, int32_t n_threads, int32_t n_batch_size, int32_t n_inputs, const char** texts, float** embeddings) {
-    bert_encode_batch_func(ctx, n_threads, n_batch_size, n_inputs, texts, embeddings);
-}
-
-void bert_tokenize(bert_ctx ctx, const char* text, int32_t* tokens, int32_t* n_tokens, int32_t n_max_tokens) {
-    bert_tokenize_func(ctx, text, tokens, n_tokens, n_max_tokens);
-}
-
-void bert_eval(bert_ctx ctx, int32_t n_threads, int32_t* tokens, int32_t n_tokens, float* embeddings) {
-    bert_eval_func(ctx, n_threads, tokens, n_tokens, embeddings);
-}
-
-void bert_eval_batch(bert_ctx ctx, int32_t n_threads, int32_t n_batch_size, int32_t** batch_tokens, int32_t* n_tokens, float** batch_embeddings) {
-    bert_eval_batch_func(ctx, n_threads, n_batch_size, batch_tokens, n_tokens, batch_embeddings);
-}
-
-const char* bert_vocab_id_to_token(bert_ctx ctx, int32_t id) {
-    return bert_vocab_id_to_token_func(ctx, id);
-}
-
-// C helper function to set n_tokens at a specific index
-void set_n_token_at(int32_t* n_tokens_array, int32_t index, int32_t value) {
-    n_tokens_array[index] = value;
-}
 */
 import "C"
 
@@ -175,57 +150,4 @@ func exEmbedText(handle uintptr, text string, nThreads, size int32) ([]float32, 
 		(*C.float)(unsafe.Pointer(&embeddings[0])),
 	)
 	return embeddings, nil
-}
-
-// exTokenizeText tokenizes the given text into tokens.
-func exTokenizeText(handle uintptr, text string, maxTokens int) ([]Token, error) {
-	cText := C.CString(text)
-	defer C.free(unsafe.Pointer(cText))
-
-	tokens := make([]C.int32_t, maxTokens)
-	var nTokens C.int32_t
-
-	C.bert_tokenize(
-		C.bert_ctx(handle),
-		cText,
-		&tokens[0],
-		&nTokens,
-		C.int32_t(maxTokens),
-	)
-
-	result := make([]Token, nTokens)
-	for i := 0; i < int(nTokens); i++ {
-		result[i] = Token(tokens[i])
-	}
-	return result, nil
-}
-
-// exEmbedTokens embeds a sequence of tokens into embeddings.
-func exEmbedTokens(handle uintptr, tokens []Token, nThreads, size int32) ([]float32, error) {
-	nTokens := int32(len(tokens))
-	embeddings := make([]float32, size)
-
-	cTokens := make([]C.int32_t, nTokens)
-	for i, tok := range tokens {
-		cTokens[i] = C.int32_t(tok)
-	}
-
-	C.bert_eval(
-		C.bert_ctx(handle),
-		C.int32_t(nThreads),
-		&cTokens[0],
-		C.int32_t(nTokens),
-		(*C.float)(unsafe.Pointer(&embeddings[0])),
-	)
-
-	return embeddings, nil
-}
-
-// exTokenToString converts a token ID to its corresponding string.
-func exTokenToString(handle uintptr, id Token) (string, error) {
-	cStr := C.bert_vocab_id_to_token(C.bert_ctx(handle), C.int32_t(id))
-	if cStr == nil {
-		return "", fmt.Errorf("bert_vocab_id_to_token failed")
-	}
-	return C.GoString(cStr), nil
 }

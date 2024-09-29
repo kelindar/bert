@@ -26,17 +26,4 @@ func main() {
 	}
 	fmt.Println("Embeddings:", embeddings)
 
-	// Tokenize
-	tokens, err := ctx.Tokenize(text)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Tokens:", tokens)
-
-	// Evaluate tokens
-	embeddings, err = ctx.EmbedTokens(tokens)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("Embeddings from tokens:", embeddings)
 }

@@ -11,7 +11,7 @@ Precompiled binaries for Windows and Linux are available in the [dist](dist) dir
 First, clone the repository and its submodules with the following commands. The `--recurse-submodules` flag is used to clone the `ggml` submodule, which is a header-only library for matrix operations.
 
 ```bash
-git clone --recurse-submodules https://github.com/skeskinen/bert.cpp
+git clone --recurse-submodules https://github.com/iamlemec/bert.cpp
 cd bert.cpp
 ```
 
