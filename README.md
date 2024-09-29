@@ -18,7 +18,7 @@ func main() {
 	}
 	defer model.Close()
 
-    // Create an embedding vector for a sentence
+	// Create an embedding vector for a sentence
 	embeddings, err := model.EmbedText("This is a test sentence.")
 	if err != nil {
 		panic(err)
