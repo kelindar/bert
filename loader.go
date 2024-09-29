@@ -17,27 +17,16 @@ typedef void* bert_ctx;
 typedef bert_ctx (*bert_load_from_file_t)(const char* fname);
 typedef void (*bert_free_t)(bert_ctx ctx);
 typedef void (*bert_encode_t)(bert_ctx ctx, int32_t n_threads, const char* text, float* embeddings);
-typedef void (*bert_encode_batch_t)(bert_ctx ctx, int32_t n_threads, int32_t n_batch_size, int32_t n_inputs, const char** texts, float** embeddings);
-typedef void (*bert_tokenize_t)(bert_ctx ctx, const char* text, int32_t* tokens, int32_t* n_tokens, int32_t n_max_tokens);
-typedef void (*bert_eval_t)(bert_ctx ctx, int32_t n_threads, int32_t* tokens, int32_t n_tokens, float* embeddings);
-typedef void (*bert_eval_batch_t)(bert_ctx ctx, int32_t n_threads, int32_t n_batch_size, int32_t** batch_tokens, int32_t* n_tokens, float** batch_embeddings);
 typedef int32_t (*bert_n_embd_t)(bert_ctx ctx);
 typedef int32_t (*bert_n_max_tokens_t)(bert_ctx ctx);
-typedef const char* (*bert_vocab_id_to_token_t)(bert_ctx ctx, int32_t id);
 
 static void* bert_lib_handle = NULL;
 
 static bert_load_from_file_t bert_load_from_file_func = NULL;
 static bert_free_t bert_free_func = NULL;
 static bert_encode_t bert_encode_func = NULL;
-static bert_encode_batch_t bert_encode_batch_func = NULL;
-static bert_tokenize_t bert_tokenize_func = NULL;
-static bert_eval_t bert_eval_func = NULL;
-static bert_eval_batch_t bert_eval_batch_func = NULL;
 static bert_n_embd_t bert_n_embd_func = NULL;
 static bert_n_max_tokens_t bert_n_max_tokens_func = NULL;
-static bert_vocab_id_to_token_t bert_vocab_id_to_token_func = NULL;
-
 static char bert_error_msg[256];
 
 const char* bert_get_error() {
@@ -54,17 +43,11 @@ int bert_load_library(const char* lib_path) {
     bert_load_from_file_func = (bert_load_from_file_t)dlsym(bert_lib_handle, "bert_load_from_file");
     bert_free_func = (bert_free_t)dlsym(bert_lib_handle, "bert_free");
     bert_encode_func = (bert_encode_t)dlsym(bert_lib_handle, "bert_encode");
-    bert_encode_batch_func = (bert_encode_batch_t)dlsym(bert_lib_handle, "bert_encode_batch");
-    bert_tokenize_func = (bert_tokenize_t)dlsym(bert_lib_handle, "bert_tokenize");
-    bert_eval_func = (bert_eval_t)dlsym(bert_lib_handle, "bert_eval");
-    bert_eval_batch_func = (bert_eval_batch_t)dlsym(bert_lib_handle, "bert_eval_batch");
     bert_n_embd_func = (bert_n_embd_t)dlsym(bert_lib_handle, "bert_n_embd");
     bert_n_max_tokens_func = (bert_n_max_tokens_t)dlsym(bert_lib_handle, "bert_n_max_tokens");
-    bert_vocab_id_to_token_func = (bert_vocab_id_to_token_t)dlsym(bert_lib_handle, "bert_vocab_id_to_token");
 
-    if (!bert_load_from_file_func || !bert_free_func || !bert_encode_func || !bert_encode_batch_func ||
-        !bert_tokenize_func || !bert_eval_func || !bert_eval_batch_func || !bert_n_embd_func ||
-        !bert_n_max_tokens_func || !bert_vocab_id_to_token_func) {
+    if (!bert_load_from_file_func || !bert_free_func || !bert_encode_func || !bert_n_embd_func ||
+        !bert_n_max_tokens_func ) {
         snprintf(bert_error_msg, sizeof(bert_error_msg), "Failed to load symbols: %s", dlerror());
         return -1;
     }
